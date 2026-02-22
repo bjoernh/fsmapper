@@ -189,6 +189,7 @@ public:
     int getMappingsNum(){return mappings.get() ? mappings->size() : 0;}
     bool findCapturedWindow(FloatPoint point, CapturedWindowAttributes& attrs);
     size_t getCapturedImageNum(){return captured_image_elements.size();}
+    const std::string& get_name() const {return name;}
 };
 
 //============================================================================================
@@ -301,6 +302,7 @@ public:
     Action* findAction(uint64_t evid);
     std::pair<int, int> getMappingsStat();
     bool findCapturedWindow(FloatPoint point, View::CapturedWindowAttributes& attrs);
+    const std::string& get_name() const {return name;}
 
     // functions for views
     const std::optional<view_utils::region_restriction>& get_region_restriction()const {return def_restriction;}

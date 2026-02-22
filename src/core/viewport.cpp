@@ -1052,6 +1052,21 @@ void ViewPort::invalidate_rect(const FloatRect& rect){
 
 int ViewPort::registerView(sol::object def_obj){
     return lua_c_interface(manager.get_engine(), "viewport:register_view", [this, &def_obj](){
+        if (def_obj.get_type() == sol::type::table) {
+            auto def = def_obj.as<sol::table>();
+            auto name_opt = lua_safevalue<std::string>(def["name"]);
+            if (name_opt && name_opt->size() > 0) {
+                // If the engine is already running/freezed, try to find an existing view by this name
+                if (is_freezed) {
+                    for (size_t i = 0; i < views.size(); i++) {
+                        if (views[i]->get_name() == *name_opt) {
+                            return static_cast<int>(i);
+                        }
+                    }
+                }
+            }
+        }
+        
         if (is_freezed){
             throw MapperException("Viewport definitions are fixed by calling mapper.start_viewports(). "
                                   "You may need to call mapper.reset_viewports().");
@@ -1065,7 +1080,7 @@ int ViewPort::registerView(sol::object def_obj){
         if (current_view == 0){
             current_view = 1;
         }
-        return views.size() - 1;
+        return static_cast<int>(views.size() - 1);
     });
 }
 
@@ -1330,6 +1345,21 @@ void ViewPortManager::update_viewports(){
 
 std::shared_ptr<ViewPort> ViewPortManager::create_viewport(sol::object def_obj){
     std::lock_guard lock(mutex);
+    if (def_obj.get_type() == sol::type::table) {
+        auto def = def_obj.as<sol::table>();
+        auto name_opt = lua_safevalue<std::string>(def["name"]);
+        if (name_opt && name_opt->size() > 0) {
+            if (status != Status::init) {
+                // Return existing viewport if it was already created during previous execution
+                for (auto& vp : viewports) {
+                    if (vp->get_name() == *name_opt) {
+                        return vp;
+                    }
+                }
+            }
+        }
+    }
+
     if (status == Status::init){
         auto viewport = std::make_shared<ViewPort>(*this, def_obj);
         viewports.push_back(viewport);
@@ -1433,6 +1463,21 @@ void ViewPortManager::reset_viewports(){
 
 std::shared_ptr<CapturedWindow> ViewPortManager::create_captured_window(sol::object def_obj){
     std::lock_guard lock(mutex);
+    if (def_obj.get_type() == sol::type::table) {
+        auto def = def_obj.as<sol::table>();
+        auto name_opt = lua_safevalue<std::string>(def["name"]);
+        if (name_opt && name_opt->size() > 0) {
+            if (status != Status::init) {
+                // Return existing captured window if found
+                for (auto& cw : captured_windows) {
+                    if (cw.second->get_name() == *name_opt) {
+                        return cw.second;
+                    }
+                }
+            }
+        }
+    }
+
     if (status == Status::init){
         auto cwid = cwid_counter++;
         auto captured_window = std::make_shared<CapturedWindow>(engine, cwid, def_obj);
